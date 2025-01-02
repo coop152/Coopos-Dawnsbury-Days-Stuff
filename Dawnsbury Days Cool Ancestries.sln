@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dawnsbury.Mod.Ancestries.Ki
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dawnsbury.Mod.Ancestries.Tengu", "Dawnsbury.Mod.Ancestries.Tengu\Dawnsbury.Mod.Ancestries.Tengu.csproj", "{938D59C3-BFFA-4C92-9031-C92BC1246BF5}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dawnsbury.Mod.Capstone", "Dawnsbury.Mod.Capstone\Dawnsbury.Mod.Capstone.csproj", "{82D3F4C9-6243-4C48-A211-8E18288ED998}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug v2|Any CPU = Debug v2|Any CPU
@@ -41,6 +43,10 @@ Global
 		{938D59C3-BFFA-4C92-9031-C92BC1246BF5}.Release v2|Any CPU.Build.0 = Release v2|Any CPU
 		{938D59C3-BFFA-4C92-9031-C92BC1246BF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{938D59C3-BFFA-4C92-9031-C92BC1246BF5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82D3F4C9-6243-4C48-A211-8E18288ED998}.Debug v2|Any CPU.ActiveCfg = Debug v2|Any CPU
+		{82D3F4C9-6243-4C48-A211-8E18288ED998}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82D3F4C9-6243-4C48-A211-8E18288ED998}.Release v2|Any CPU.ActiveCfg = Release v2|Any CPU
+		{82D3F4C9-6243-4C48-A211-8E18288ED998}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
