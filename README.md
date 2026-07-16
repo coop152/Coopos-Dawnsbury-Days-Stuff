@@ -45,7 +45,6 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
     * Magpie Snatch Feat
     * Soaring Flight Feat
     * Soaring Form Feat
-    * Dual-Handed Assault Feat (for Fighter)
     * A bunch of swords:
         * Brace trait
         * Katana
