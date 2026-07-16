@@ -73,7 +73,7 @@ public static class TenguAncestryLoader
         Items.RegisterItems();
 
         AddFeats(GetAncestryFeats());
-
+        /*
         ModManager.AddFeat(new TrueFeat(ModManager.RegisterFeatName("Dual-Handed Assault"),
             4,
             "You snap your free hand over to grip your weapon just long enough to add momentum and deliver a more powerful blow to your opponent.",
@@ -129,6 +129,8 @@ public static class TenguAncestryLoader
                     else return null;
                 };
             }));
+        */
+        ModManager.RegisterFeatNameReplacement("Dual-Handed Assault", FeatName.DualHandedAssault);
     }
 
     static void AddFeats(IEnumerable<Feat> feats)
@@ -139,15 +141,15 @@ public static class TenguAncestryLoader
         }
     }
 
-    static public bool IsAssemblyExists(string assemblyName)
-    {
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            if (assembly.FullName.StartsWith(assemblyName))
-                return true;
-        }
-        return false;
-    }
+    // static public bool IsAssemblyExists(string assemblyName)
+    // {
+    //     foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+    //     {
+    //         if (assembly.FullName.StartsWith(assemblyName))
+    //             return true;
+    //     }
+    //     return false;
+    // }
 
     static IEnumerable<Feat> GetAncestryFeats()
     {

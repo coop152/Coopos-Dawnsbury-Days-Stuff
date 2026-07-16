@@ -36,7 +36,6 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         static public readonly Trait Wakizashi = ModManager.RegisterTrait("Wakizashi", new TraitProperties("Wakizashi", false));
         static public readonly Trait TenguGaleBlade = ModManager.RegisterTrait("TenguGaleBlade", new TraitProperties("Tengu Gale Blade", false));
         static public readonly Trait Nodachi = ModManager.RegisterTrait("Nodachi", new TraitProperties("Nodachi", false));
-        static public readonly Trait BastardSword = ModManager.RegisterTrait("BastardSword", new TraitProperties("Bastard Sword", false));
         //static public readonly Trait TenguFeatherFan = ModManager.RegisterTrait("TenguFeatherFan", new TraitProperties("Tengu Feather Fan", false));
 
         static public readonly Illustration ChangeGripArt = new ModdedIllustration("TenguAssets/changeGrip.png");
@@ -57,35 +56,35 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
 
             ModManager.RegisterNewItemIntoTheShop("katana", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, Trait.TwoHand1d10, Trait.VersatileP, Trait.Mod])
+                return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, Trait.TwoHand1d10, Trait.VersatileP])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Slashing)
                 }.WithMainTrait(Katana);
             });
             ModManager.RegisterNewItemIntoTheShop("khakkara", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, Trait.MonkWeapon, Trait.TwoHand1d10, Trait.VersatileP, Trait.Mod])
+                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, Trait.MonkWeapon, Trait.TwoHand1d10, Trait.VersatileP])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Bludgeoning)
                 }.WithMainTrait(Khakkara);
             });
             ModManager.RegisterNewItemIntoTheShop("temple sword", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/templeSword.png"), "temple sword", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.MonkWeapon, Trait.Trip, Trait.Mod])
+                return new Item(name, new ModdedIllustration("TenguAssets/templeSword.png"), "temple sword", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.MonkWeapon, Trait.Trip])
                 {
                     WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
                 }.WithMainTrait(TempleSword);
             });
             ModManager.RegisterNewItemIntoTheShop("wakizashi", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/wakizashi.png"), "wakizashi", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Agile, Trait.DeadlyD8, Trait.Finesse, Trait.VersatileP, Trait.Mod])
+                return new Item(name, new ModdedIllustration("TenguAssets/wakizashi.png"), "wakizashi", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Agile, Trait.DeadlyD8, Trait.Finesse, Trait.VersatileP])
                 {
                     WeaponProperties = new WeaponProperties("1d4", DamageKind.Slashing)
                 }.WithMainTrait(Wakizashi);
             });
             ModManager.RegisterNewItemIntoTheShop("tengu gale blade", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/tenguGaleBlade.png"), "tengu gale blade", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Agile, Trait.Disarm, Trait.Finesse, TenguAncestryLoader.TenguTrait, Trait.Mod])
+                return new Item(name, new ModdedIllustration("TenguAssets/tenguGaleBlade.png"), "tengu gale blade", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Agile, Trait.Disarm, Trait.Finesse, TenguAncestryLoader.TenguTrait])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Slashing)
                 }.WithMainTrait(TenguGaleBlade);
@@ -93,19 +92,13 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
             ModManager.RegisterNewItemIntoTheShop("nodachi", (ItemName name) =>
             {
                 return new Item(name, new ModdedIllustration("TenguAssets/nodachi.png"), "nodachi", level: 0, price: 6,
-                    [Trait.Weapon, Trait.Melee, Trait.Advanced, Trait.Sword, Trait.TwoHanded, Trait.DeadlyD12, Trait.Reach, Brace, Trait.Mod])
+                    [Trait.Weapon, Trait.Melee, Trait.Advanced, Trait.Sword, Trait.TwoHanded, Trait.DeadlyD12, Trait.Reach, Brace])
                 {
                     WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
                 }.WithMainTrait(Nodachi).ImplementBrace();
             });
-            ModManager.RegisterNewItemIntoTheShop("bastard sword", (ItemName name) =>
-            {
-                return new Item(name, new CornerIllustration(new ModdedIllustration("TenguAssets/bastardSword.png"), IllustrationName.RedWarning, Direction.Southeast), "bastard sword", level: 0, price: 4,
-                    [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Mod, Trait.SellsAtFullPrice, Trait.DoNotAddToShop])
-                {
-                    WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
-                }.WithMainTrait(BastardSword).WithDescription("{icon:RedWarning}{Red}{b}Mod Note{/b} This bastard sword is an outdated modded item, which lacks the Two-Hand trait. Sell it and use the newer base game version of the item instead.{/Red} (This item sells at full price instead of half, so you can reclaim its full value.)");
-            });
+            // Register replacement for this mod's removed bastard sword, so old save files use the base game weapon
+            ModManager.RegisterItemNameReplacement("bastard sword", ItemName.BastardSword);
             //ModManager.RegisterNewItemIntoTheShop("tengu feather fan", (ItemName name) =>
             //{
             //    Illustration fanArt = new ModdedIllustration("TenguAssets/tenguFeatherFan.png");
