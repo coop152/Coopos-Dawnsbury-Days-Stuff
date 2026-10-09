@@ -18,6 +18,7 @@ using Dawnsbury.Core.Mechanics.Targeting.Targets;
 using Dawnsbury.Core.Mechanics.Treasure;
 using Dawnsbury.Core.Possibilities;
 using Dawnsbury.Core.Roller;
+using Dawnsbury.Core.StatBlocks.Monsters.L15;
 using Dawnsbury.Core.Tiles;
 using Dawnsbury.Display;
 using Dawnsbury.Display.Illustrations;
@@ -31,7 +32,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu;
 
 // TODO: 
 // * maybe make tengu weapon familiarity grant proficiency with the sword in your hand at the start of combat? proficiency with all swords is a little jank
-// * level 9 feat: wind god's fan - ugrades tengu feather fan, which i didnt make yet. gotta do that first
+// * level 9 feat: wind god's fan - upgrades tengu feather fan, which i didnt make yet. gotta do that first
 
 public static class TenguAncestryLoader
 {
@@ -67,6 +68,27 @@ public static class TenguAncestryLoader
                     .WithWeaponProperties(new WeaponProperties("1d6", DamageKind.Piercing))
                 });
             });
+
+        // register the tengu evil doppelganger abilities
+        MirrorEntity.RegisterAncestryTemplate(TenguTrait, creature =>
+        {
+            creature.AddQEffect(MirrorEntity.AncestryDefenseBonus(Defense.Reflex));
+            
+            creature.AddQEffect(QEffect.DamageResistance(DamageKind.Electricity, 7));
+            creature.AddQEffect(QEffect.Flying());
+            creature.AddQEffect(
+                new QEffect("Jinxed Tengu", "If you succeed at a saving throw against a curse effect, you get a critical success instead.")
+                {
+                    AdjustSavingThrowCheckResult = (QEffect self, Defense defense, CombatAction action, CheckResult result) =>
+                    {
+                        if ((action.HasTrait(Trait.Misfortune) || action.HasTrait(Trait.Curse))
+                            && defense.IsSavingThrow() && result == CheckResult.Success)
+                            return CheckResult.CriticalSuccess;
+                        else return result;
+                    },
+                }
+            );
+        });
 
         ModManager.AddFeat(TenguAncestry);
 
@@ -161,7 +183,7 @@ public static class TenguAncestryLoader
             "You conjure uncanny orbs of spiritual flame that float above or below the water's surface.",
             $"You can cast the {{tooltip:marinersFireExplanation}}mariner's fire{{/}} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma. You can cast this cantrip underwater.",
             [TenguTrait]
-            ).WithIllustration(marinersFire.Illustration).WithRulesBlockForSpell(marinersFire.SpellId).WithOnCreature(delegate (Creature cr)
+            ).WithIllustration(marinersFire.Illustration).WithRulesBlockForSpell(marinersFire.SpellId, TenguTrait).WithOnCreature(delegate (Creature cr)
             {
                 cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([marinersFire.SpellId], cr.MaximumSpellRank);
             }).WithOnSheet(calculatedSheet =>
@@ -239,7 +261,7 @@ public static class TenguAncestryLoader
             "Wind and lightning have always been friends to you.",
             $"You can cast the {electricArc.ToSpellLink()} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma.",
             [TenguTrait]
-            ).WithIllustration(electricArc.Illustration).WithRulesBlockForSpell(electricArc.SpellId).WithOnCreature(delegate (Creature cr)
+            ).WithIllustration(electricArc.Illustration).WithRulesBlockForSpell(electricArc.SpellId, TenguTrait).WithOnCreature(delegate (Creature cr)
             {
                 cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([electricArc.SpellId], cr.MaximumSpellRank);
             }).WithOnSheet(calculatedSheet =>
@@ -467,7 +489,42 @@ public static class TenguAncestryLoader
             {
                 cr.AddQEffect(QEffect.Flying());
             });
+        
+        // Harbinger's Caw
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Harbinger's Caw", "Harbinger's Caw {icon:Reaction}"),
+            13,
+            "You caw ominously, cursing a creature with misfortune.",
+            "{b}Frequency{/b} once per day\n{b}Trigger{/b} A creature within 60 feet is about to attempt an attack roll or skill check.\n\nThe target creature must roll the triggering check twice and take the lower result.",
+            [Trait.Auditory, Trait.Divine, Trait.Misfortune, TenguTrait]
+        ).WithOnCreature(delegate (Creature player)
+        {
+            // if it's already been used today, don't provide the effect
+            if (player.PersistentUsedUpResources.UsedUpActions.Contains("Harbinger's Caw")) return;
 
+            QEffect tenguEffect = new QEffect("Harbinger's Caw {icon:Reaction}", "When an enemy rolls an attack roll or skill check, make them roll twice and take the lowest result.");
+            
+            // all enemies in combat get this effect
+            tenguEffect.AddGrantingOfTechnical((cr) => cr.EnemyOf(player), qEffect =>
+            {
+                qEffect.RerollActiveRoll = async (self, breakdownResult, action, target) =>
+                {
+                    string whatEnemyIsDoing = action.HasTrait(Trait.Attack) ? "an attack roll" : "a skill check";
+                    bool playerConfirms = await player.AskToUseReaction($"{self.Owner.Name} has made {whatEnemyIsDoing} against {target.Name}. Spend a reaction to use {{b}}Harbinger's Caw{{/b}}, making them reroll the check and take the worse result?");
+                    if (playerConfirms)
+                    {
+                        player.PersistentUsedUpResources.UsedUpActions.Add("Harbinger's Caw");
+                        tenguEffect.ExpiresAt = ExpirationCondition.Immediately;
+                        return RerollDirection.RerollAndKeepWorst;
+                    } else
+                    {
+                        return RerollDirection.DoNothing;
+                    }
+                };
+            });
+            
+            player.AddQEffect(tenguEffect);
+        });
     }
 
     static IEnumerable<Feat> GetHeritages()
@@ -525,7 +582,7 @@ public static class TenguAncestryLoader
             ModManager.RegisterFeatName("Mountainkeeper Tengu"),
             "You come from a line of tengu ascetics, leaving you with a link to the spirits of the world.",
             $"You can cast the {{tooltip:mountainkeepersLashExplanation}}mountainkeeper's lash{{/}} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma."
-            ).WithRulesBlockForSpell(mountainkeepersLash.SpellId).WithOnCreature((Creature cr) =>
+            ).WithRulesBlockForSpell(mountainkeepersLash.SpellId, TenguTrait).WithOnCreature((Creature cr) =>
             {
                 cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([mountainkeepersLash.SpellId], cr.MaximumSpellRank);
             }).WithOnSheet((calculatedSheet) =>
