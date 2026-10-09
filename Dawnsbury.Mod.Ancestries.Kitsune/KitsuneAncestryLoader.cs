@@ -15,6 +15,7 @@ using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Core.Mechanics.Enumerations;
 using Dawnsbury.Core.Mechanics.Treasure;
 using Dawnsbury.Core.Possibilities;
+using Dawnsbury.Core.StatBlocks.Monsters.L15;
 using Dawnsbury.Display.Illustrations;
 using Dawnsbury.Display.Text;
 using Dawnsbury.Modding;
@@ -39,6 +40,10 @@ public static class KitsuneAncestryLoader
 
     static FeatName KitsuneSpellFamiliarityFeatName = ModManager.RegisterFeatName("Kitsune Spell Familiarity");
 
+    static FeatName KitsuneSpellMysteriesFeatName = ModManager.RegisterFeatName("Kitsune Spell Mysteries");
+
+    static FeatName StarOrbFeatName = ModManager.RegisterFeatName("Star Orb");
+
     static Illustration BlueFlameArt = new ModdedIllustration("KitsuneAssets/blueflame.png");
 
     [DawnsburyDaysModMainMethod]
@@ -61,7 +66,43 @@ public static class KitsuneAncestryLoader
             ],
             heritages: GetHeritages().ToList());
 
-        
+        // register the kitsune evil doppelganger abilities
+        MirrorEntity.RegisterAncestryTemplate(KitsuneTrait, creature =>
+        {
+            creature.AddQEffect(MirrorEntity.AncestryDefenseBonus(Defense.Will));
+
+            // give a foxfire attack
+            creature.WithAdditionalUnarmedStrike(
+                new Item(BlueFlameArt, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical, Trait.Sling])
+                            .WithWeaponProperties(
+                                new WeaponProperties("1d6", DamageKind.Fire)
+                                {
+                                    Sfx = SfxName.FireRay,
+                                    VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, BlueFlameArt)
+                                }.WithMaximumRange(100).WithRangeIncrement(4))/*.WithModificationRune(ItemName.WeaponPotencyRunestone2).WithModificationRune(ItemName.GreaterStrikingRunestone)*/
+                );
+
+
+            // provide Dark Fields Kitsune stats (Invigorating Fear plus intimidating glare and some intimidation skill to go with it)
+            creature.WithFeat(FeatName.IntimidatingGlare);
+            creature.Skills.Set(Skill.Intimidation, 25);
+            QEffect kitsuneEffect = new QEffect("Invigorating Fear {icon:Reaction}", "Gain temporary Hit Points in response to a nearby creature becoming frightened.");
+            kitsuneEffect.AddGrantingOfTechnical((cr) => true, (QEffect otherEffect) =>
+            {
+                otherEffect.AfterYouAcquireEffect = async (QEffect otherEffect, QEffect received) =>
+                {
+                    Creature kitsune = kitsuneEffect.Owner;
+                    Creature other = otherEffect.Owner;
+                    if (received.Id != QEffectId.Frightened) return;
+                    int tempHP = Math.Max(otherEffect.Owner.Level, 3);
+                    if (!await kitsune.AskToUseReaction($"A nearby creature ({other.Name}) has become frightened.\nUse Invigorating Fear to gain {tempHP} temporary Hit Points?")) return;
+                    kitsune.GainTemporaryHP(tempHP);
+                    kitsuneEffect.ExpiresAt = ExpirationCondition.Immediately;
+                };
+            });
+
+            creature.AddQEffect(kitsuneEffect);
+        });
 
         ModManager.AddFeat(KitsuneAncestry);
 
@@ -128,7 +169,7 @@ public static class KitsuneAncestryLoader
                 null,
                 $"You can cast {AllSpells.CreateSpellLink(spellId, KitsuneTrait)} as a divine innate spell at will. Your spellcasting ability for this cantrip is Charisma.",
                 [KitsuneTrait, SpellFamiliaritySubfeatTrait],
-                null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId).WithOnCreature(delegate (Creature cr)
+                null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId, KitsuneTrait).WithOnCreature(delegate (Creature cr)
                 {
                     cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], cr.MaximumSpellRank);
                 });
@@ -149,7 +190,7 @@ public static class KitsuneAncestryLoader
                 sheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             });
         yield return new TrueFeat(
-            ModManager.RegisterFeatName("Star Orb"),
+            StarOrbFeatName,
             level: 1,
             "Your magic has crystallized into a spherical stone.",
             "You gain a Star Orb, a magical item that resembles a mundane stone. Once per day, you can activate the item in one of two ways:\n\n{b}Activate - Orb Restoration{/b} {icon:Action}; You recover 1d8 hit points times half your level (minimum 1d8)\n\n{b}Activate - Orb Focus{/b} {icon:Action}; You restore 1 focus point to your focus pool, up to your usual maximum.",
@@ -178,19 +219,6 @@ public static class KitsuneAncestryLoader
                 });
             });
         
-        Feat SpellMysteriesSubfeat(string featName, SpellId spellId)
-        {
-            Spell spell = AllSpells.CreateModernSpellTemplate(spellId, KitsuneTrait);
-            return new Feat(
-                ModManager.RegisterFeatName(featName, spell.Name),
-                null,
-                $"You can cast {AllSpells.CreateSpellLink(spellId, KitsuneTrait)} as a divine innate spell at will. Your spellcasting ability for this spell is Charisma.",
-                [KitsuneTrait],
-                null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId).WithOnCreature(delegate (Creature cr)
-                {
-                    cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], 1);
-                });
-        }
         yield return new TrueFeat(
             FierceFoxfireFeatName,
             level: 5,
@@ -199,8 +227,21 @@ public static class KitsuneAncestryLoader
             [KitsuneTrait, Trait.Homebrew]
             ).WithPrerequisite(sheet => sheet.HasFeat(FoxFireFeatName), "You need Foxfire to take this feat.");
 
+        Feat SpellMysteriesSubfeat(string featName, SpellId spellId)
+        {
+            Spell spell = AllSpells.CreateModernSpellTemplate(spellId, KitsuneTrait);
+            return new Feat(
+                ModManager.RegisterFeatName(featName, spell.Name),
+                null,
+                $"You can cast {AllSpells.CreateSpellLink(spellId, KitsuneTrait)} as a divine innate spell at will. Your spellcasting ability for this spell is Charisma.",
+                [KitsuneTrait],
+                null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId, KitsuneTrait, 1).WithOnCreature(delegate (Creature cr)
+                {
+                    cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], 1);
+                });
+        }
         yield return new TrueFeat(
-            ModManager.RegisterFeatName("Kitsune Spell Mysteries"),
+            KitsuneSpellMysteriesFeatName,
             level: 5,
             "You know more kitsune magic.",
             $"{{b}}Prerequisites{{/b}} You have at least one innate kitsune spell\n\nChoose {AllSpells.CreateSpellLink(SpellId.Bane, KitsuneTrait)} or {AllSpells.CreateSpellLink(SpellId.Sanctuary, KitsuneTrait)}. You can cast this spell as a 1st-level divine innate spell once per day. Your spellcasting ability for this spell is Charisma.",
@@ -255,6 +296,49 @@ public static class KitsuneAncestryLoader
                     }
                 };
                 cr.AddQEffect(trickQEffect);
+            });
+
+        // Killing Stone
+        Spell spell = AllSpells.CreateModernSpellTemplate(SpellId.Cloudkill, KitsuneTrait);
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Killing Stone"),
+            level: 13,
+            "Your star orb hides a deadly miasma.",
+            $"{{b}}Prerequisites{{/b}} You have the Star Orb ancestry feat\n\nYou can cast 5th-level {AllSpells.CreateSpellLink(SpellId.Cloudkill, KitsuneTrait)} as a divine innate spell once per day. Your spellcasting ability for this spell is Charisma.",
+            [KitsuneTrait]
+        ).WithIllustration(spell.Illustration).WithRulesBlockForSpell(SpellId.Cloudkill, KitsuneTrait, 5).WithOnCreature(delegate (Creature cr)
+        {
+            cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([SpellId.Cloudkill], 5);
+        }).WithPrerequisite(sheet => sheet.HasFeat(StarOrbFeatName), "You must have the Star Orb ancestry feat.");
+
+        // Kitsune Spell Expertise
+        Feat SpellExpertiseSubfeat(string featName, SpellId spellId)
+        {
+            Spell spell = AllSpells.CreateModernSpellTemplate(spellId, KitsuneTrait);
+            return new Feat(
+                ModManager.RegisterFeatName(featName, spell.Name),
+                null,
+                $"You can cast {AllSpells.CreateSpellLink(spellId, KitsuneTrait)} as a divine innate spell at will.",
+                [KitsuneTrait],
+                null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId, KitsuneTrait, 5).WithOnCreature(delegate (Creature cr)
+                {
+                    cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], 5);
+                });
+        }
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Kitsune Spell Expertise"),
+            level: 13,
+            "Your tails show your magical mastery.",
+            $"{{b}}Prerequisites{{/b}} You have the Kitsune Spell Mysteries ancestry feat\n\nChoose {AllSpells.CreateSpellLink(SpellId.Confusion, KitsuneTrait)} or {AllSpells.CreateSpellLink(SpellId.DeathWard, KitsuneTrait)}. You can cast this spell as a 5th-level divine innate spell once per day. You become an expert in spell attacks and spell save DCs.",
+            [KitsuneTrait],
+            [
+                SpellExpertiseSubfeat("KitsuneSpellExpertiseConfusion", SpellId.Confusion),
+                SpellExpertiseSubfeat("KitsuneSpellExpertiseDeathWard", SpellId.DeathWard)
+                ])
+            .WithPrerequisite(sheet => sheet.HasFeat(KitsuneSpellMysteriesFeatName), "You must have the Kitsune Spell Mysteries ancestry feat.")
+            .WithOnSheet((sheet) =>
+            {
+                sheet.SetProficiency(Trait.Spell, Proficiency.Expert);
             });
     }
 
