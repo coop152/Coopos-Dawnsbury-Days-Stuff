@@ -64,6 +64,10 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
     * Creed Magic Feat
     * Harbinger's Armament Feat
 
+## Building
+
+You need to create a `GameDirectory.props` file so that the projects can locate the base game's DLL. An example is given at `GameDirectory.props.example`, which you can copy and edit to point to the game's install folder. (This file is excluded from the git repo so you can use a different path on different systems.)
+
 
 ## Differences from RAW
 * Each ancestry has a heritage which grants 2 free ability boosts (following the "Unusual" naming pattern as in the basegame, except for Tanuki who get "Completely Average.")

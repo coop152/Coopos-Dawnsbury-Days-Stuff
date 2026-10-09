@@ -1,4 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../GameDirectory.props" />
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -34,13 +35,6 @@
       <HintPath>$(GameDirectory)Data\MonoGame.Framework.dll</HintPath>
     </Reference>
   </ItemGroup>
-
-	<!-- NOTE: Change this variable depending on the location of the game. 
-	You can edit this text directly, or instead, add the commandline argument /p:GameDirectory=dir/to/game -->
-	<PropertyGroup>
-		<GameDirectory>C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\</GameDirectory>
-	</PropertyGroup>
-
 
 	<!-- Build targets. Copy to CustomMods, and also to the workshop uploader folder if in release mode. -->
 	<Target Name="CopyToGameModsFolder" AfterTargets="Build">
