@@ -66,7 +66,7 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
 
 ## Building
 
-You need to create a `GameDirectory.props` file so that the projects can locate the base game's DLL. An example is given at `GameDirectory.props.example`, which you can copy and edit to point to the game's install folder. (This file is excluded from the git repo so you can use a different path on different systems.)
+You need to create a `GameDirectory.props` file in the root of the repo so that the mod projects can locate Dawnsbury Days' DLL. An example is given at `GameDirectory.props.example`, which you can copy and edit to point to the game's install folder. (This file is excluded from the git repo so you can use a different path on different systems.)
 
 
 ## Differences from RAW

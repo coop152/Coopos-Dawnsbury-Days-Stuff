@@ -321,7 +321,7 @@ public static class TenguAncestryLoader
             5,
             "You quickly snatch whatever shiny items catch your eye.",
             "{b}Requirements{/b} Both of your hands are empty\n\nYou Interact to pick up as many items as you can hold, up to two.",
-            [TenguTrait]
+            [TenguTrait, Trait.Homebrew]
             ).WithActionCost(1).WithPermanentQEffect(qf =>
             {
                 qf.ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
@@ -331,29 +331,24 @@ public static class TenguAncestryLoader
                     return new ActionPossibility(
                         new CombatAction(self.Owner, IllustrationName.PickUp, "Magpie Snatch", [Trait.Manipulate, Trait.Interact],
                         "{i}You quickly snatch whatever shiny items catch your eye.{/i}\n\n{b}Requirements{/b} Both of your hands are empty\n\nYou Interact to pick up as many items as you can hold, up to two.",
-                        Target.Self().WithAdditionalRestriction(cr => cr.Occupies.DroppedItems.Count == 0 &&
-                            cr.Occupies.Neighbours.All(edge => edge.Tile.DroppedItems.Count == 0) ? "There is nothing for you to pick up." : null)
+                        Target.Self().WithAdditionalRestriction(cr =>
+                            cr.Neighbours.TilesWithinRadius(1).All(tile => tile.DroppedItems.Count == 0) ? "There is nothing for you to pick up." : null)
                         ).WithEffectOnSelf(async cr =>
                         {
                             // enumerate all items on the occupied tile plus neighbours (you are allowed to pick up items in adjacent tiles)
                             List<(Item item, Action pickUp)> floorItems = [];
-                            floorItems.AddRange(cr.Occupies.DroppedItems.Select<Item, (Item, Action)>(item => (item, () =>
-                                {
-                                    cr.AddHeldItem(item);
-                                    cr.Occupies.DroppedItems.Remove(item);
-                                    floorItems.RemoveFirst(tuple => tuple.item == item);
-                                })));
-                            foreach (Edge edge in cr.Occupies.Neighbours)
+
+                            foreach (Tile tile in cr.Neighbours.TilesWithinRadius(1))
                             {
-                                floorItems.AddRange(edge.Tile.DroppedItems.Select<Item, (Item, Action)>(item => (item, () =>
+                                floorItems.AddRange(tile.DroppedItems.Select<Item, (Item, Action)>(item => (item, () =>
                                 {
                                     cr.AddHeldItem(item);
-                                    edge.Tile.DroppedItems.Remove(item);
+                                    tile.DroppedItems.Remove(item);
                                     floorItems.RemoveFirst(tuple => tuple.item == item);
                                 }
                                 )));
                             }
-                            int handsRequired = floorItems.Sum(tuple => tuple.item.TwoHanded ? 2 : 1);
+                            int handsRequired = floorItems.Sum(tuple => tuple.item.HasTrait(Trait.TwoHanded) ? 2 : 1);
                             if (handsRequired <= 2)
                             {
                                 for (int i = 0; i < 2; i++)
@@ -370,10 +365,10 @@ public static class TenguAncestryLoader
                                 pickUpFirstItem();
                                 cr.Battle.Log($"\t{cr.Name} nabs {{b}}{firstItem.Name}{{/b}}.");
                                 // hands are full - stop now
-                                if (firstItem.TwoHanded)
+                                if (firstItem.HasTrait(Trait.TwoHanded))
                                     return;
                                 // pick up second item
-                                choices = floorItems.Where(tuple => !tuple.item.TwoHanded).Select(tuple => tuple.item.Name).ToList();
+                                choices = floorItems.Where(tuple => !tuple.item.HasTrait(Trait.TwoHanded)).Select(tuple => tuple.item.Name).ToList();
                                 var secondChoice = await cr.AskForChoiceAmongButtons(IllustrationName.PickUp, "Magpie Snatch — What item do you pick up second?", [.. choices]);
                                 (Item secondItem, Action pickUpSecondItem) = floorItems.FirstOrDefault(tuple => tuple.item.Name == secondChoice.Text);
                                 pickUpSecondItem();
@@ -525,6 +520,46 @@ public static class TenguAncestryLoader
             
             player.AddQEffect(tenguEffect);
         });
+
+        // Homebrewed Harbinger's Caw
+        // Frequency once per day
+
+        // Choose an enemy creature within 60 feet of you. The next time it makes an attack roll or skill check this encounter, it rolls twice and takes the lower result.
+        // If the creature dies or the encounter ends before the creature does this, you regain your daily use of this ability.
+        // yield return new TrueFeat(
+        //     ModManager.RegisterFeatName("Harbinger's Caw", "Harbinger's Caw {icon:freeAction}"),
+        //     13,
+        //     "You caw ominously, cursing a creature with misfortune.",
+        //     "{b}Frequency{/b} once per day\n\nChoose an enemy creature within 60 feet of you. The next time it makes an attack roll or skill check this encounter, it rolls twice and takes the lower result.",
+        //     [Trait.Auditory, Trait.Divine, Trait.Misfortune, TenguTrait, Trait.Rebalanced]
+        // ).WithOnCreature(delegate (Creature player)
+        // {
+        //     // if it's already been used today, don't provide the effect
+        //     if (player.PersistentUsedUpResources.UsedUpActions.Contains("Harbinger's Caw")) return;
+
+        //     QEffect tenguEffect = new QEffect("Harbinger's Caw {icon:Reaction}", "When an enemy rolls an attack roll or skill check, make them roll twice and take the lowest result.");
+            
+        //     // all enemies in combat get this effect
+        //     tenguEffect.AddGrantingOfTechnical((cr) => cr.EnemyOf(player), qEffect =>
+        //     {
+        //         qEffect.RerollActiveRoll = async (self, breakdownResult, action, target) =>
+        //         {
+        //             string whatEnemyIsDoing = action.HasTrait(Trait.Attack) ? "an attack roll" : "a skill check";
+        //             bool playerConfirms = await player.AskToUseReaction($"{self.Owner.Name} has made {whatEnemyIsDoing} against {target.Name}. Spend a reaction to use {{b}}Harbinger's Caw{{/b}}, making them reroll the check and take the worse result?");
+        //             if (playerConfirms)
+        //             {
+        //                 player.PersistentUsedUpResources.UsedUpActions.Add("Harbinger's Caw");
+        //                 tenguEffect.ExpiresAt = ExpirationCondition.Immediately;
+        //                 return RerollDirection.RerollAndKeepWorst;
+        //             } else
+        //             {
+        //                 return RerollDirection.DoNothing;
+        //             }
+        //         };
+        //     });
+            
+        //     player.AddQEffect(tenguEffect);
+        // });
     }
 
     static IEnumerable<Feat> GetHeritages()
