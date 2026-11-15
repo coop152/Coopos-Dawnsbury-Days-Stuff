@@ -321,7 +321,7 @@ public static class TenguAncestryLoader
             5,
             "You quickly snatch whatever shiny items catch your eye.",
             "{b}Requirements{/b} Both of your hands are empty\n\nYou Interact to pick up as many items as you can hold, up to two.",
-            [TenguTrait, Trait.Homebrew]
+            [TenguTrait, Trait.Rebalanced]
             ).WithActionCost(1).WithPermanentQEffect(qf =>
             {
                 qf.ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
@@ -486,52 +486,12 @@ public static class TenguAncestryLoader
             });
         
         // Harbinger's Caw
-        yield return new TrueFeat(
-            ModManager.RegisterFeatName("Harbinger's Caw", "Harbinger's Caw {icon:Reaction}"),
-            13,
-            "You caw ominously, cursing a creature with misfortune.",
-            "{b}Frequency{/b} once per day\n{b}Trigger{/b} A creature within 60 feet is about to attempt an attack roll or skill check.\n\nThe target creature must roll the triggering check twice and take the lower result.",
-            [Trait.Auditory, Trait.Divine, Trait.Misfortune, TenguTrait]
-        ).WithOnCreature(delegate (Creature player)
-        {
-            // if it's already been used today, don't provide the effect
-            if (player.PersistentUsedUpResources.UsedUpActions.Contains("Harbinger's Caw")) return;
-
-            QEffect tenguEffect = new QEffect("Harbinger's Caw {icon:Reaction}", "When an enemy rolls an attack roll or skill check, make them roll twice and take the lowest result.");
-            
-            // all enemies in combat get this effect
-            tenguEffect.AddGrantingOfTechnical((cr) => cr.EnemyOf(player), qEffect =>
-            {
-                qEffect.RerollActiveRoll = async (self, breakdownResult, action, target) =>
-                {
-                    string whatEnemyIsDoing = action.HasTrait(Trait.Attack) ? "an attack roll" : "a skill check";
-                    bool playerConfirms = await player.AskToUseReaction($"{self.Owner.Name} has made {whatEnemyIsDoing} against {target.Name}. Spend a reaction to use {{b}}Harbinger's Caw{{/b}}, making them reroll the check and take the worse result?");
-                    if (playerConfirms)
-                    {
-                        player.PersistentUsedUpResources.UsedUpActions.Add("Harbinger's Caw");
-                        tenguEffect.ExpiresAt = ExpirationCondition.Immediately;
-                        return RerollDirection.RerollAndKeepWorst;
-                    } else
-                    {
-                        return RerollDirection.DoNothing;
-                    }
-                };
-            });
-            
-            player.AddQEffect(tenguEffect);
-        });
-
-        // Homebrewed Harbinger's Caw
-        // Frequency once per day
-
-        // Choose an enemy creature within 60 feet of you. The next time it makes an attack roll or skill check this encounter, it rolls twice and takes the lower result.
-        // If the creature dies or the encounter ends before the creature does this, you regain your daily use of this ability.
         // yield return new TrueFeat(
-        //     ModManager.RegisterFeatName("Harbinger's Caw", "Harbinger's Caw {icon:freeAction}"),
+        //     ModManager.RegisterFeatName("Harbinger's Caw", "Harbinger's Caw {icon:Reaction}"),
         //     13,
         //     "You caw ominously, cursing a creature with misfortune.",
-        //     "{b}Frequency{/b} once per day\n\nChoose an enemy creature within 60 feet of you. The next time it makes an attack roll or skill check this encounter, it rolls twice and takes the lower result.",
-        //     [Trait.Auditory, Trait.Divine, Trait.Misfortune, TenguTrait, Trait.Rebalanced]
+        //     "{b}Frequency{/b} once per day\n{b}Trigger{/b} A creature within 60 feet is about to attempt an attack roll or skill check.\n\nThe target creature must roll the triggering check twice and take the lower result.",
+        //     [Trait.Auditory, Trait.Divine, Trait.Misfortune, TenguTrait]
         // ).WithOnCreature(delegate (Creature player)
         // {
         //     // if it's already been used today, don't provide the effect
@@ -560,6 +520,65 @@ public static class TenguAncestryLoader
             
         //     player.AddQEffect(tenguEffect);
         // });
+
+        // Homebrewed Harbinger's Caw
+        // Frequency once per day
+
+        // Choose an enemy creature within 60 feet of you. The next time it makes an attack roll or skill check this encounter, it rolls twice and takes the lower result.
+        // If the creature dies or the encounter ends before the creature does this, you regain your daily use of this ability.
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Harbinger's Caw", "Harbinger's Caw {icon:FreeAction}"),
+            13,
+            "You caw ominously, cursing a creature with misfortune.",
+            "{b}Frequency{/b} once per day\n\nChoose an enemy creature within 60 feet of you. The next time it makes an attack roll or skill check this encounter, it rolls twice and takes the lower result. If the creature dies or the encounter ends before the creature does this, you regain your daily use of this ability.",
+            [Trait.Auditory, Trait.Divine, Trait.Misfortune, TenguTrait, Trait.Rebalanced]
+        ).WithOnCreature(delegate (Creature player)
+        {
+            QEffect tenguEffect = new QEffect("Harbinger's Caw {icon:Reaction}", "When an enemy rolls an attack roll or skill check, make them roll twice and take the lowest result.");
+
+            tenguEffect.ProvideActionIntoPossibilitySection = (self, section) =>
+            {
+                // if it's already been used today, don't provide the effect
+                if (player.PersistentUsedUpResources.UsedUpActions.Contains("Harbinger's Caw")) return null;
+
+                if (section.PossibilitySectionId != PossibilitySectionId.SkillActions) return null;
+
+                return new ActionPossibility(
+                    new CombatAction(player, IllustrationName.BestowCurse, "Harbinger's Caw",
+                    [Trait.Auditory, Trait.Divine, Trait.Misfortune, TenguTrait, Trait.Rebalanced],
+                    "{i}You caw ominously, cursing a creature with misfortune.{/i}\n\n{b}Frequency{/b} once per day\n\nChoose an enemy creature within 60 feet of you. The next time it makes an attack roll or skill check this encounter, it rolls twice and takes the lower result.",
+                    Target.Ranged(12)).WithActionCost(0)
+                    .WithEffectOnEachTarget(async (CombatAction spell, Creature caster, Creature target, CheckResult checkResult) =>
+                    {
+                        // use up daily charge immediately (but it can be refunded)
+                        player.PersistentUsedUpResources.UsedUpActions.Add("Harbinger's Caw");
+                        target.AddQEffect(
+                            new QEffect("Harbinger's Caw", "The next time you make an attack roll or skill check this encounter, you roll twice and take the lower result.")
+                            {
+                                Illustration = IllustrationName.BestowCurse,
+                                ExpiresAt = ExpirationCondition.Never,
+                                RerollActiveRoll = async (self, breakdownResult, action, target) =>
+                                {
+                                    self.ExpiresAt = ExpirationCondition.Immediately;
+                                    return RerollDirection.RerollAndKeepWorst;
+                                },
+                                WhenCreatureDiesAtStateCheckAsync = async (self) =>
+                                {
+                                    player.PersistentUsedUpResources.UsedUpActions.Remove("Harbinger's Caw");
+                                },
+                                EndOfCombat = async (self, playerWon) =>
+                                {
+                                    // need to check if the creature is alive at combat end, because this also runs on dead creatures at the end of combat
+                                    if (self.Owner.Alive) player.PersistentUsedUpResources.UsedUpActions.Remove("Harbinger's Caw");
+                                }
+                            }
+                        );
+                    })
+                    );
+            };
+
+            player.AddQEffect(tenguEffect);
+        });
     }
 
     static IEnumerable<Feat> GetHeritages()
