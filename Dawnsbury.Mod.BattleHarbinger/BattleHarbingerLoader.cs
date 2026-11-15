@@ -19,7 +19,6 @@ using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.TrueFeatDb.Archetypes;
 using Dawnsbury.Display.Text;
-using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
 
 namespace Dawnsbury.Mods.BattleHarbinger;
 
@@ -181,9 +180,9 @@ public static class BattleHarbingerLoader
             {
                 sheet.PreparedSpells[Trait.Cleric].Slots.Add(new CreedMagicSpellSlot(2, "CreedMagic:1"));
                 sheet.PreparedSpells[Trait.Cleric].Slots.Add(new CreedMagicSpellSlot(2, "CreedMagic:2"));
-                sheet.ClericAdditionalPreparableSpells.Add(SpellId.ResistEnergy);
-                sheet.ClericAdditionalPreparableSpells.Add(SpellId.SeeInvisibility);
-                sheet.ClericAdditionalPreparableSpells.Add(SpellId.TrueStrike);
+                sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(SpellId.ResistEnergy);
+                sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(SpellId.SeeInvisibility);
+                sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(SpellId.TrueStrike);
             });
         // Harbinger's Armament
         yield return new TrueFeat(
@@ -274,6 +273,28 @@ public static class BattleHarbingerLoader
                 {
                     sheet.GrantFeat(FeatName.AttackOfOpportunity);
                 });
+                // Greater Creed (level 11)
+                sheet.AddAtLevel(11, sheet =>
+                {
+                    sheet.SetProficiency(Trait.Spell, Proficiency.Expert);
+                });
+                // Major Creed (level 13)
+                sheet.AddAtLevel(13, sheet =>
+                {
+                    Item? favoredWeapon = (sheet.Deity != null) ? Items.CreateNew(sheet.Deity.FavoredWeapon) : null;
+                    if (favoredWeapon != null && favoredWeapon.MainTrait != Trait.None)
+                    {
+                        sheet.SetProficiency(favoredWeapon.MainTrait, Proficiency.Master);
+                    }
+                    sheet.SetProficiency(Trait.Fortitude, Proficiency.Master);
+                    // fortitude S => CS is implemented in WithOnCreature below
+                });
+                // True Creed (level 15)
+                sheet.AddAtLevel(15, sheet =>
+                {
+                    sheet.SetProficiency(Trait.Cleric, Proficiency.Master);
+                    sheet.SetProficiency(Trait.Will, Proficiency.Master);
+                });
                 // Spellcasting Modifications
                 sheet.AtEndOfRecalculation += (CalculatedCharacterSheetValues sheet) =>
                 {
@@ -318,10 +339,10 @@ public static class BattleHarbingerLoader
                     }
                 };
                 // Grant access to battle aura spells
-                sheet.ClericAdditionalPreparableSpells.Add(ModSpellId.BattleBless);
-                sheet.ClericAdditionalPreparableSpells.Add(ModSpellId.BattleBane);
-                sheet.ClericAdditionalPreparableSpells.Add(ModSpellId.BattleBenediction);
-                sheet.ClericAdditionalPreparableSpells.Add(ModSpellId.BattleMalediction);
+                sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(ModSpellId.BattleBless);
+                sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(ModSpellId.BattleBane);
+                sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(ModSpellId.BattleBenediction);
+                sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(ModSpellId.BattleMalediction);
             }).WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
             {
                 // grant crit spec with favoured weapon at level 5 and on
@@ -335,6 +356,9 @@ public static class BattleHarbingerLoader
                             else return false;
                         }
                     });
+                // Major Creed's fort save upgrade effect (aka Juggernaut)
+                if (cr.Level >= 13)
+                    CommonCharacterFeatures.AddEvasion(sheet, cr, "Juggernaut (Major Creed)", Defense.Fortitude);
             });
     }
 }

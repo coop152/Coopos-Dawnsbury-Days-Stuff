@@ -211,7 +211,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                                         ExpiresAt = ExpirationCondition.Ephemeral
                                     });
                                 // battle aura; use class DC
-                                CheckResult checkResult = CommonSpellEffects.RollSavingThrow(enemy, action, Defense.Will, self.Owner.ClassDC());
+                                CheckResult checkResult = await CommonSpellEffects.RollSavingThrowAsync(enemy, action, Defense.Will, self.Owner.ClassDC());
                                 enemy.AddQEffect(new QEffect(ExpirationCondition.Never)
                                 {
                                     Id = ModQEffectId.RolledAgainstMalediction,
@@ -333,7 +333,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                                         ExpiresAt = ExpirationCondition.Ephemeral
                                     });
                                 // battle aura; use class DC
-                                CheckResult checkResult = CommonSpellEffects.RollSavingThrow(enemy, action, Defense.Will, self.Owner.ClassDC());
+                                CheckResult checkResult = await CommonSpellEffects.RollSavingThrowAsync(enemy, action, Defense.Will, self.Owner.ClassDC());
                                 enemy.AddQEffect(new QEffect(ExpirationCondition.Never)
                                 {
                                     Id = QEffectId.RolledAgainstBane,
