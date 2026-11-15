@@ -19,6 +19,8 @@ using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.TrueFeatDb.Archetypes;
 using Dawnsbury.Display.Text;
+using Dawnsbury.Core.Creatures.Parts;
+using System.Reflection;
 
 namespace Dawnsbury.Mods.BattleHarbinger;
 
@@ -168,21 +170,36 @@ public static class BattleHarbingerLoader
                 sheet.SetProficiency(Trait.HeavyArmor, sheet.GetProficiency(Trait.MediumArmor));
             });
         // Creed Magic
+        // TODO: these should probably be spell links instead of just spell names in italics.
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Creed Magic"),
             8,
             "You've expanded your divine capabilities, granting you magic that better supports your combat focus.",
-            "You gain two special 2nd-level creed spell slots, which can be used to prepare {i}resist energy{/i}, {i}see invisibility{/i}, and {i}true strike{/i} as divine spells.",
+            "You gain two special 2nd-level creed spell slots, which can be used to prepare {i}resist energy{/i}, {i}see invisibility{/i}, and {i}true strike{/i} as divine spells.\nAt 10th level, these slots increase to 3rd rank and you can also prepare {i}haste{/i} and {i}heroism{/i} in them.\nAt 14th level, these slots increase to 4th rank and you can also prepare {i}fly{/i} and {i}freedom of movement{/i} in them.",
             []
             ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
             .WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
             .WithOnSheet(sheet =>
             {
-                sheet.PreparedSpells[Trait.Cleric].Slots.Add(new CreedMagicSpellSlot(2, "CreedMagic:1"));
-                sheet.PreparedSpells[Trait.Cleric].Slots.Add(new CreedMagicSpellSlot(2, "CreedMagic:2"));
-                sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(SpellId.ResistEnergy);
-                sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(SpellId.SeeInvisibility);
-                sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(SpellId.TrueStrike);
+                var level = sheet.Sheet.MaximumLevel;
+                List<SpellId> creedSpells = [SpellId.ResistEnergy, SpellId.SeeInvisibility, SpellId.TrueStrike];
+                if (level >= 10)
+                {
+                    creedSpells.AddRange([SpellId.Haste, SpellId.Heroism]);
+                }
+                if (level >= 14)
+                {
+                    creedSpells.AddRange([SpellId.Fly, SpellId.FreedomOfMovement]);
+                }
+                // add the spells to the preparation menu
+                foreach (SpellId spell in creedSpells)
+                {
+                    sheet.PreparedSpells[Trait.Cleric].AdditionalPreparableSpells.Add(spell);
+                }
+                // add the spell slots, of appropriate rank
+                var spellRank = level >= 14 ? 4 : (level >= 10 ? 3 : 2);
+                sheet.PreparedSpells[Trait.Cleric].Slots.Add(new CreedMagicSpellSlot(spellRank, "CreedMagic:1", creedSpells));
+                sheet.PreparedSpells[Trait.Cleric].Slots.Add(new CreedMagicSpellSlot(spellRank, "CreedMagic:2", creedSpells));
             });
         // Harbinger's Armament
         yield return new TrueFeat(
@@ -288,6 +305,10 @@ public static class BattleHarbingerLoader
                     }
                     sheet.SetProficiency(Trait.Fortitude, Proficiency.Master);
                     // fortitude S => CS is implemented in WithOnCreature below
+
+                    // Also, armor proficiency increasing with Divine Defense
+                    sheet.SetProficiency(Trait.LightArmor, Proficiency.Expert);
+                    sheet.SetProficiency(Trait.MediumArmor, Proficiency.Expert);
                 });
                 // True Creed (level 15)
                 sheet.AddAtLevel(15, sheet =>
@@ -312,7 +333,23 @@ public static class BattleHarbingerLoader
                         sheet.PreparedSpells[Trait.Cleric].Slots.RemoveAll((PreparedSpellSlot slot) => slot.Key.StartsWith("Cleric:Spell" + i));
                     }
                 };
+                // Remove Resolute Faith (unfortunately requires a very hacky solution)
+                sheet.AddAtLevel(9, sheet =>
+                {
+                    // Reduce will save proficiency (with hack)
+                    FieldInfo fi = typeof(Proficiencies).GetField("traitProficiencies", BindingFlags.NonPublic|BindingFlags.Instance)!;
+                    Dictionary<Trait, Proficiency> dictionary = (Dictionary<Trait, Proficiency>)fi.GetValue(sheet.Proficiencies)!;
+                    dictionary[Trait.Will] = Proficiency.Expert;
 
+                });
+                // Remove S to CS improvement qeffect
+                sheet.AtEndOfRecalculation += sheet =>
+                {
+                    sheet.OnCreature += (sheet, cr) =>
+                    {
+                        cr.RemoveAllQEffects(qf => qf.Name == "Resolve");
+                    };
+                };
                 // Divine Font Modifications
                 // Remove divine font selection and feats
                 sheet.SelectionOptions.RemoveAll(option => option.Name == "Divine font");
@@ -327,7 +364,7 @@ public static class BattleHarbingerLoader
                     int level = sheet.Sheet.MaximumLevel;
 
                     // Grant battle font slots
-                    int slotCount = level >= 5 ? 5 : 4;
+                    int slotCount = level >= 15 ? 6 : (level >= 5 ? 5 : 4);
                     List<SpellId> extraAuras = [];
                     if (sheet.HasFeat(ModFeatName.AuraEnhancement))
                     {
