@@ -246,10 +246,11 @@ namespace Dawnsbury.Mods.BattleHarbinger
         private static void BlessBaneEffectOnSelf(CombatAction action, Creature caster, Illustration illustration, bool isBless, int initialRadius, int sustainExpansion)
         {
             // Stop visual studio from crying about nullability
-            (int, bool) DeconstructTag(QEffect qEffect)
+            // Tag is (auraSize, sustainedThisTurn, bonusValue/penaltyValue)
+            (int, bool, int) DeconstructTag(QEffect qEffect)
             {
-                if (qEffect.Tag == null) return (initialRadius, true);
-                else return ((int, bool))qEffect.Tag;
+                if (qEffect.Tag == null) return (initialRadius, true, 1);
+                else return ((int, bool, int))qEffect.Tag;
             };
             AuraAnimation auraAnimation = caster.AnimationData.AddAuraAnimation(isBless ? IllustrationName.BlessCircle : IllustrationName.BaneCircle, initialRadius);
             QEffect casterEffect = new QEffect(isBless ? "Bless" : "Bane", "[this condition has no description]", ExpirationCondition.Never, caster, IllustrationName.None)
@@ -258,14 +259,17 @@ namespace Dawnsbury.Mods.BattleHarbinger
                 {
                     auraAnimation.MoveTo(0f);
                 },
-                Tag = (initialRadius, true),
+                Traits = [ModTrait.BattleAura],
+                Tag = (initialRadius, true, 1),
                 StartOfYourEveryTurn = async delegate (QEffect self, Creature _)
                 {
-                    self.Tag = (DeconstructTag(self).Item1, false);
+                    // reset the sustain flag, allowing the spell to be sustained again
+                    var oldTag = DeconstructTag(self);
+                    self.Tag = (oldTag.Item1, false, oldTag.Item3);
                 },
                 ProvideContextualAction = delegate (QEffect self)
                 {
-                    (int auraSize, bool sustainedThisTurn) = DeconstructTag(self);
+                    (int auraSize, bool sustainedThisTurn, int bonusValue) = DeconstructTag(self);
                     if (!sustainedThisTurn)
                         return new ActionPossibility(
                             new CombatAction(self.Owner, illustration, isBless ? "Increase Bless radius" : "Increase Bane radius",
@@ -274,7 +278,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                             Target.Self((Creature cr, AI ai) => -2.14748365E+09f)).WithEffectOnSelf((Creature _) =>
                             {
                                 int newAuraSize = auraSize + sustainExpansion;
-                                self.Tag = (newAuraSize, true);
+                                self.Tag = (newAuraSize, true, bonusValue);
                                 auraAnimation.MoveTo(newAuraSize);
                                 if (!isBless)
                                 {
@@ -291,13 +295,13 @@ namespace Dawnsbury.Mods.BattleHarbinger
             {
                 casterEffect.StateCheck = (QEffect self) =>
                 {
-                    int auraSize = DeconstructTag(self).Item1;
+                    (int auraSize, bool _, int bonusValue) = DeconstructTag(self);
                     foreach (Creature friend in self.Owner.Battle.AllCreatures.Where((Creature cr) => cr.DistanceTo(self.Owner) <= auraSize && cr.FriendOf(self.Owner) && !cr.HasTrait(Trait.Mindless) && !cr.HasTrait(Trait.Object)))
                     {
-                        friend.AddQEffect(new QEffect("Bless", "You gain a +1 status bonus to attack rolls.", ExpirationCondition.Ephemeral, self.Owner, IllustrationName.Bless)
+                        friend.AddQEffect(new QEffect("Bless", $"You gain a +{bonusValue} status bonus to attack rolls.", ExpirationCondition.Ephemeral, self.Owner, IllustrationName.Bless)
                         {
                             CountsAsABuff = true,
-                            BonusToAttackRolls = (QEffect _, CombatAction action, Creature? _) => action.HasTrait(Trait.Attack) ? new Bonus(1, BonusType.Status, "bless") : null
+                            BonusToAttackRolls = (QEffect _, CombatAction action, Creature? _) => action.HasTrait(Trait.Attack) ? new Bonus(bonusValue, BonusType.Status, "bless") : null
                         });
                     }
                 };
@@ -306,7 +310,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
             {
                 casterEffect.StateCheckWithVisibleChanges = async delegate (QEffect self)
                 {
-                    int auraSize = DeconstructTag(self).Item1;
+                    (int auraSize, bool _, int bonusValue) = DeconstructTag(self);
                     foreach (Creature enemy in self.Owner.Battle.AllCreatures.Where((Creature cr) => cr.DistanceTo(self.Owner) <= auraSize
                         && cr.EnemyOf(self.Owner)
                         && (!cr.HasTrait(Trait.Mindless) || self.Owner.HasFeat(ModFeatName.ExigentAura))
@@ -316,7 +320,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                         {
                             if (enemy.QEffects.Any((QEffect qf) => qf.Id == QEffectId.FailedAgainstBane && qf.Tag == self))
                             {
-                                ApplyBaneEffect(enemy);
+                                ApplyBaneEffect(enemy, bonusValue);
                             }
                             else if (!enemy.QEffects.Any((QEffect qf) => qf.Id == QEffectId.RolledAgainstBane && qf.Tag == self))
                             {
@@ -346,18 +350,18 @@ namespace Dawnsbury.Mods.BattleHarbinger
                                         Id = QEffectId.FailedAgainstBane,
                                         Tag = self
                                     });
-                                    ApplyBaneEffect(enemy);
+                                    ApplyBaneEffect(enemy, bonusValue);
                                 }
                             }
                         }
                     }
 
-                    void ApplyBaneEffect(Creature enemy)
+                    void ApplyBaneEffect(Creature enemy, int value)
                     {
-                        enemy.AddQEffect(new QEffect("Bane", "You take a -1 status penalty to attack rolls.", ExpirationCondition.Ephemeral, self.Owner, IllustrationName.Bane)
+                        enemy.AddQEffect(new QEffect("Bane", $"You take a -{value} status penalty to attack rolls.", ExpirationCondition.Ephemeral, self.Owner, IllustrationName.Bane)
                         {
                             Key = "BanePenalty",
-                            BonusToAttackRolls = (QEffect _, CombatAction action, Creature? _) => action.HasTrait(Trait.Attack) ? new Bonus(-1, BonusType.Status, "bane") : null
+                            BonusToAttackRolls = (QEffect _, CombatAction action, Creature? _) => action.HasTrait(Trait.Attack) ? new Bonus(-value, BonusType.Status, "bane") : null
                         });
                     }
                 };

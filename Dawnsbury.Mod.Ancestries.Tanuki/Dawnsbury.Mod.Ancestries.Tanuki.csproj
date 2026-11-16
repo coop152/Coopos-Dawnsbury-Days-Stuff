@@ -20,9 +20,9 @@
     <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="9.0.6" />
-  </ItemGroup>
+  </ItemGroup> -->
 
   <ItemGroup>
     <Reference Include="Common">

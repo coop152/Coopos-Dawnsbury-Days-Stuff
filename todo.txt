@@ -1,0 +1,33 @@
+tengu mod: 
+*DONE* implement that special encounter support
+*DONE* Harbinger's Caw - feat 13
+* might have to finish tengu feather fan so i can have all the addon feats...
+*DONE* homebrewed harbinger's caw
+
+kitsune mod:
+*DONE* implement that special encounter support
+*DONE* Killing Stone - feat 13
+*DONE* Kitsune Spell Expertise - feat 13
+
+tanuki mod:
+* bugfix - ponpoko doesnt have an action count in the feat name
+* implement that special encounter support
+* Mud Boat's Passage and Rolling White Bottle Form at level 9
+* Ponpoko-pon! - feat 13 (homebrew changes)
+    * choice 1, change it to a 9th level feat and make it work like kobold's Breath Unleashed (you can do it once per battle to make the damage d8s and increase the size)
+    * choice 2, make it a flat increase to 30ft
+    * choice 3, make the 9th level feat as a new one, then make Ponpoko-pon! give you 30ft range at all times plus persistent sonic damage on crit fails (like draconic paragon) <=== I LIKE THIS ONE
+    
+battle harbinger mod:
+*DONE* greater, major and true creed proficiency increases
+*DONE* at 15th level, you get a 6th harbinger slot
+*DONE* at 13th level when you gain the Divine Defense class feature, you also gain expert proficiency in light and medium armor.
+*DONE* creed magic gets better at higher levels - implement that
+*DONE* bugfix - should not be gaining Resolute Faith and Miraculous Spell.
+*NOT A BIG DEAL, TOO MUCH TROUBLE TO FIX* bugfix - the general feat granted by Harbinger's Resiliency seems to think every other general feat taken is "after" it, even though it's in the right place in the list. pretty minor
+*IDK IF THIS MATTERS* creed magic should only let you prepare the spells in the creed magic slots specifically
+* empowered onslaught - feat 12 (this should probably just be a marker, with the implementation in tandem onslaught)
+* tandem auras - feat 12 (code probably very similar to Tandem Onslaught, just after you sustain using AfterUsingAction.)
+* update the doctrine description with all of this stuff
+
+https://discord.com/channels/1099544488667525171/1142143019068428508/1550531171463602330
