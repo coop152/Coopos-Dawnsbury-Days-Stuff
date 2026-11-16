@@ -21,22 +21,19 @@ using Dawnsbury.Core.CharacterBuilder.FeatsDb.TrueFeatDb.Archetypes;
 using Dawnsbury.Display.Text;
 using Dawnsbury.Core.Creatures.Parts;
 using System.Reflection;
+using Dawnsbury.Auxiliary;
 
 namespace Dawnsbury.Mods.BattleHarbinger;
 
 // TODO: remaster spells mod can clash cause spells like True Strike are removed (so they cant be prepared). give that a look and try to resolve.
 public static class BattleHarbingerLoader
 {
-    // TODO: these go in ModFeatName
-    public static FeatName TandemOnslaughtFeatName = ModManager.RegisterFeatName("Tandem Onslaught");
-    public static FeatName EmpoweredOnslaughtFeatName = ModManager.RegisterFeatName("Empowered Onslaught", "Empowered Onslaught {icon:Reaction}");
-
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
-        Debugger.Launch();
 #if DEBUG
+        Debugger.Launch();
 #endif
         ModManager.AssertV3();
 
@@ -109,7 +106,7 @@ public static class BattleHarbingerLoader
             .WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.");
         // Tandem Onslaught
         yield return new TrueFeat(
-            TandemOnslaughtFeatName,
+            ModFeatName.TandemOnslaughtFeatName,
             4,
             "You have trained your body and mind to work in tandem, and you can combine your combat and spellcasting prowess to better support yourself in battle.",
             "The first time each round that you successfully hit and deal damage to an enemy creature with a Strike using a weapon or unarmed attack, you can automatically Sustain a single battle aura that you currently have active, applying any additional effects that come with Sustaining the spell.",
@@ -132,7 +129,7 @@ public static class BattleHarbingerLoader
                             .Where(action => action.HasTrait(Trait.SustainASpell) && action.HasTrait(ModTrait.BattleAura));
                         if (battleAuraSustains.Any())
                         {
-                            ChoiceButtonOption choice = await attacker.AskForChoiceAmongButtons(IllustrationName.None, "You successfully damaged an enemy. Which battle aura would you like to Sustain with Tandem Onslaught?", [.. battleAuraSustains.Select(action => action.Name), "None"]);
+                            ChoiceButtonOption choice = await attacker.AskForChoiceAmongButtons(IllustrationName.None, "You successfully damaged an enemy.\nSustain a battle aura as a free action with Tandem Onslaught?", [.. battleAuraSustains.Select(action => action.Name), "None"]);
                             if (choice.Text == "None") return;
                             CombatAction? chosen = battleAuraSustains.FirstOrDefault(action => action.Name == choice.Text);
                             if (chosen == null) return;
@@ -145,15 +142,19 @@ public static class BattleHarbingerLoader
                                 ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn
                             });
                             // Now check for Empowered Onslaught
-                            if (cr.HasFeat(EmpoweredOnslaughtFeatName) && action.CheckResult == CheckResult.CriticalSuccess)
+                            if (cr.HasFeat(ModFeatName.EmpoweredOnslaughtFeatName) && action.CheckResult == CheckResult.CriticalSuccess)
                             {
-                                // get all battle aura caster effects
-                                var battleAuraEffects = attacker.QEffects.Where(qf => qf.Traits.Contains(ModTrait.BattleAura));
+                                // get all battle aura caster effects that are not already maxed out at a +4 bonus
+                                (int, bool, int) deconstructTag(object tag) => ((int, bool, int))tag;
+                                var battleAuraEffects = attacker.QEffects.Where(qf => qf.Traits.Contains(ModTrait.BattleAura) && qf.Tag != null && deconstructTag(qf.Tag).Item3 < 4);
                                 if (!battleAuraEffects.Any()) return;
-                                ChoiceButtonOption choice2 = await attacker.AskForChoiceAmongButtons(IllustrationName.None, "Your attack was a critical hit. Which battle aura would you like to empower by 1 with Empowered Onslaught?", [.. battleAuraEffects.Select(effect => effect.Name ?? "NULL FIX FIX FIX ITS FUCKED"), "None"]);
-                                QEffect? chosen2 = battleAuraEffects.FirstOrDefault(effect => effect.Name == choice.Text);
+                                // if one can be empowered, ask the player to choose one
+                                ChoiceButtonOption choice2 = await attacker.AskForChoiceAmongButtons(IllustrationName.Reaction, "Your attack was a critical hit.\nSpend your reaction to increase a battle aura's bonus/penalty by 1 with Empowered Onslaught?", [.. battleAuraEffects.Select(effect => effect.Name).WhereNotNull(), "None"]);
+                                QEffect? chosen2 = battleAuraEffects.FirstOrDefault(effect => effect.Name == choice2.Text);
                                 if (chosen2 == null) return;
-                                var chosenTag = ((int, bool, int))chosen2.Tag;
+                                if (chosen2.Tag == null) return;
+                                // if one is chosen, increment the bonus/penalty by 1 on the effect
+                                var chosenTag = deconstructTag(chosen2.Tag);
                                 chosen2.Tag = (chosenTag.Item1, chosenTag.Item2, chosenTag.Item3 + 1);
                             }
                         }
@@ -248,29 +249,16 @@ public static class BattleHarbingerLoader
                 });
             });
         // Empowered Onslaught
+        // Just a marker feat, implementation is in Tandem Onslaught.
         yield return new TrueFeat(
-            EmpoweredOnslaughtFeatName,
+            ModFeatName.EmpoweredOnslaughtFeatName,
             12,
-            "flavor",
-            "rules",
+            "When your body and mind are perfectly in sync and pushed to the limit, they can produce even greater results. You channel your combat focus into the power of your battle auras.",
+            "{b}Trigger{/b} You critically hit and use Tandem Onslaught to Sustain a battle aura.\n\nChoose one active battle aura you have; that battle aura's status bonus or penalty increases by 1, to a maximum of 4. This value remains for the rest of the aura's duration.",
             []
         ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
-        .WithPrerequisite(TandemOnslaughtFeatName, "Tandem Onslaught")
-        .WithOnCreature(cr =>
-        {
-            cr.AddQEffect(new QEffect("Empowered Onslaught {icon:Reaction}", "When you land a critical hit and sustain a battle aura, spend a reaction to increase an aura's bonus or penalty by 1.")
-            {
-                Innate = true,
-                // AfterYouTakeAction = async (self, action) =>
-                // {
-                    
-                // }
-                // AfterYouMakeAttackRoll = (self, checkBreakdown) =>
-                // {
-                //     if (checkBreakdown.CheckResult == CheckResult.CriticalSuccess)
-                // }
-            });
-        });
+        .WithPrerequisite(ModFeatName.TandemOnslaughtFeatName, "Tandem Onslaught")
+        .WithPermanentQEffect("When you land a critical hit and use Tandem Onslaught, spend a reaction to choose a battle aura and increase its bonus/penalty by 1.", (_) => { });
 
         // Restrict feats that modify the divine font
         AllFeats.All.FirstOrDefault(feat => feat.FeatName == FeatName.VersatileFont)?.Prerequisites.Add(
