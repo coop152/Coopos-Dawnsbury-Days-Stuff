@@ -156,6 +156,7 @@ public static class BattleHarbingerLoader
                                 // if one is chosen, increment the bonus/penalty by 1 on the effect
                                 var chosenTag = deconstructTag(chosen2.Tag);
                                 chosen2.Tag = (chosenTag.Item1, chosenTag.Item2, chosenTag.Item3 + 1);
+                                attacker.Battle.Log($"{{b}}Empowered Onslaught{{/b}} strengthens {chosen2.Name}.");
                             }
                         }
                     }
@@ -259,6 +260,48 @@ public static class BattleHarbingerLoader
         ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
         .WithPrerequisite(ModFeatName.TandemOnslaughtFeatName, "Tandem Onslaught")
         .WithPermanentQEffect("When you land a critical hit and use Tandem Onslaught, spend a reaction to choose a battle aura and increase its bonus/penalty by 1.", (_) => { });
+        // Tandem Auras
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Tandem Auras"),
+            12,
+            "You've learned how to maintain multiple auras at once, reinforcing them simultaneously.",
+            "When you Sustain a battle aura, you can also Sustain a different battle aura you have active.",
+            []
+        ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
+        .WithOnCreature(cr =>
+        {
+            cr.AddQEffect(new QEffect()
+            {
+                AfterYouTakeAction = async (self, action) =>
+                {
+                    // don't run if UsedThisTurn is true, to prevent recursive loops
+                    if (self.UsedThisTurn) return;
+                    // only if the action taken was to sustain a battle aura
+                    if (!(action.HasTrait(Trait.SustainASpell) && action.HasTrait(ModTrait.BattleAura))) return;
+                    // get all sustain actions for Battle Auras
+                    Creature attacker = self.Owner;
+                    attacker.RegeneratePossibilities();
+                    IEnumerable<CombatAction> battleAuraSustains = attacker.Possibilities.CreateActions(false)
+                        .Where(iAction => iAction.CanBeginToUse(attacker).CanBeUsed || iAction.CanBeginToUse(attacker) == Usability.CommonReasons.NoActions)
+                        .Select(iAction => iAction.Action)
+                        .Where(action2 => action2.HasTrait(Trait.SustainASpell) && action2.HasTrait(ModTrait.BattleAura));
+                    // if any can be sustained...
+                    if (battleAuraSustains.Any())
+                    {
+                        ChoiceButtonOption choice = await attacker.AskForChoiceAmongButtons(IllustrationName.None, "You sustained a battle aura.\nSustain an additional battle aura with Tandem Auras?", [.. battleAuraSustains.Select(action => action.Name), "None"]);
+                        if (choice.Text == "None") return;
+                        CombatAction? chosen = battleAuraSustains.FirstOrDefault(action => action.Name == choice.Text);
+                        if (chosen == null) return;
+                        if (chosen.EffectOnChosenTargets == null) return;
+                        // execute the chosen sustain action for free
+                        // use UsedThisTurn to prevent a recursive loop
+                        self.UsedThisTurn = true;
+                        await chosen.WithActionCost(0).AllExecute();
+                        self.UsedThisTurn = false;
+                    }
+                }
+            });
+        });
 
         // Restrict feats that modify the divine font
         AllFeats.All.FirstOrDefault(feat => feat.FeatName == FeatName.VersatileFont)?.Prerequisites.Add(

@@ -27,8 +27,8 @@ battle harbinger mod:
 *NOT A BIG DEAL, TOO MUCH TROUBLE TO FIX* bugfix - the general feat granted by Harbinger's Resiliency seems to think every other general feat taken is "after" it, even though it's in the right place in the list. pretty minor
 *IDK IF THIS MATTERS* creed magic should only let you prepare the spells in the creed magic slots specifically
 *DONE* empowered onslaught - feat 12 (this should probably just be a marker, with the implementation in tandem onslaught)
-* tandem auras - feat 12 (code probably very similar to Tandem Onslaught, just after you sustain using AfterUsingAction.)
-* maybe add some combat log messages for tandem and empowered onslaught?
+*DONE* tandem auras - feat 12 (code probably very similar to Tandem Onslaught, just after you sustain using AfterUsingAction.)
+*DONE* maybe add some combat log messages for empowered onslaught, and tandem auras?
 * update the doctrine description with all of this stuff
 
 https://discord.com/channels/1099544488667525171/1142143019068428508/1550531171463602330
